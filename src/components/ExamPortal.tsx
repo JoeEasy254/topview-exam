@@ -191,6 +191,7 @@ const ExamPortal: React.FC = () => {
                   <h3 className="font-bold text-lg text-gray-800 mb-2">
                     Important Details
                   </h3>
+                  a
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Exam Date:</p>
@@ -251,7 +252,7 @@ const ExamPortal: React.FC = () => {
                     You've learned all that is required to take this exam. Take
                     a deep breath and do your best!
                   </p>
-                  -PLZ{" "}
+                  -MR. Joseph{" "}
                 </div>
               </div>
             </div>
