@@ -12,7 +12,7 @@ interface TimeRemaining {
 const ExamPortal: React.FC = () => {
   // Set exam date and time (YYYY, MM-1, DD, HH, MM) in Nairobi time
   const examDateTime: Date = DateTime.fromObject(
-    { year: 2025, month: 7, day: 18, hour: 11, minute: 15 },
+    { year: 2025, month: 7, day: 18, hour: 2, minute: 15 },
     { zone: "Africa/Nairobi" }
   ).toJSDate();
   const examLink: string = "https://forms.gle/iDWNrp94pvMUFNu77";
