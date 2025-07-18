@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DateTime } from "luxon";
 
 // Define interface for timeRemaining state
 interface TimeRemaining {
@@ -9,24 +10,70 @@ interface TimeRemaining {
 }
 
 const ExamPortal: React.FC = () => {
-  // Set exam date and time (YYYY, MM-1, DD, HH, MM)
-  const examDateTime: Date = new Date(2025, 6, 18, 11, 15); // July 18, 2025 at 11:15 AM
+  // Set exam date and time (YYYY, MM-1, DD, HH, MM) in Nairobi time
+  const examDateTime: Date = DateTime.fromObject(
+    { year: 2025, month: 7, day: 18, hour: 11, minute: 15 },
+    { zone: "Africa/Nairobi" }
+  ).toJSDate();
   const examLink: string = "https://forms.gle/iDWNrp94pvMUFNu77";
   const examDuration: string = "60 minutes";
   const examDurationMs: number = 60 * 60 * 1000; // 60 minutes in milliseconds
 
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(
+    DateTime.fromObject(
+      { year: 2025, month: 7, day: 18, hour: 13, minute: 14 },
+      { zone: "Africa/Nairobi" }
+    ).toJSDate() // Set to 01:14 PM EAT, July 18, 2025
+  );
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(
     null
   );
   const [isExamActive, setIsExamActive] = useState<boolean>(false);
   const [isExamOver, setIsExamOver] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch Nairobi time with retry mechanism
+  const fetchNairobiTime = async (retries = 3, delay = 1000): Promise<Date> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(
+          "http://worldtimeapi.org/api/timezone/Africa/Nairobi"
+        );
+        if (!response.ok) throw new Error("Failed to fetch Nairobi time");
+        const data = await response.json();
+        return DateTime.fromISO(data.datetime, {
+          zone: "Africa/Nairobi",
+        }).toJSDate();
+      } catch (err) {
+        if (i < retries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        setError(
+          "Could not fetch Nairobi time. Using last known time or system time."
+        );
+        return currentTime || new Date(); // Fallback to last known time or system time
+      }
+    }
+    return currentTime || new Date();
+  };
 
   // Calculate time remaining until exam or during exam
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now: Date = new Date();
+    // Initial time is already set to provided Nairobi time
+    let lastFetchedTime = currentTime;
+
+    const timer = setInterval(async () => {
+      // Update time locally to reduce API calls
+      const now = new Date(lastFetchedTime.getTime() + 1000);
       setCurrentTime(now);
+      lastFetchedTime = now;
+
+      // Periodically fetch real Nairobi time (e.g., every 30 seconds)
+      if (Math.floor(now.getTime() / 1000) % 30 === 0) {
+        lastFetchedTime = await fetchNairobiTime();
+        setCurrentTime(lastFetchedTime);
+      }
 
       // Calculate time difference
       const diff: number = examDateTime.getTime() - now.getTime();
@@ -67,11 +114,12 @@ const ExamPortal: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [examDateTime, examDurationMs]);
+  }, [examDateTime, examDurationMs, currentTime]);
 
+  console.log("current time", currentTime);
   // Format date for display
   const formatDate = (date: Date): string => {
-    return date.toLocaleDateString("en-US", {
+    return DateTime.fromJSDate(date).setZone("Africa/Nairobi").toLocaleString({
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -79,11 +127,11 @@ const ExamPortal: React.FC = () => {
     });
   };
 
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTime = (date: Date | null): string => {
+    if (!date) return "Loading...";
+    return DateTime.fromJSDate(date)
+      .setZone("Africa/Nairobi")
+      .toLocaleString({ hour: "2-digit", minute: "2-digit", hour12: true });
   };
 
   return (
@@ -131,6 +179,14 @@ const ExamPortal: React.FC = () => {
               </div>
 
               <div className="space-y-6">
+                {error && (
+                  <div className="bg-red-50 rounded-xl p-4 border-l-4 border-red-500">
+                    <p className="text-red-700">
+                      {error} Please ensure your internet connection is stable
+                      or contact support.
+                    </p>
+                  </div>
+                )}
                 <div className="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
                   <h3 className="font-bold text-lg text-gray-800 mb-2">
                     Important Details
@@ -155,7 +211,9 @@ const ExamPortal: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Current Time:</p>
+                      <p className="text-sm text-gray-600">
+                        Current Time (Baringo):
+                      </p>
                       <p className="font-bold text-purple-700">
                         {formatTime(currentTime)}
                       </p>
@@ -193,6 +251,7 @@ const ExamPortal: React.FC = () => {
                     You've learned all that is required to take this exam. Take
                     a deep breath and do your best!
                   </p>
+                  -PLZ{" "}
                 </div>
               </div>
             </div>
@@ -340,7 +399,7 @@ const ExamPortal: React.FC = () => {
         {/* Footer */}
         <footer className="mt-12 text-center text-gray-600">
           <p>© 2025 Topview Academy. All rights reserved.</p>
-          <p className="mt-2 text-sm">Good luck on your exam! .</p>
+          <p className="mt-2 text-sm">Good luck on your exam!</p>
         </footer>
       </div>
     </div>
