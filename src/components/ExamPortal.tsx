@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 // Define interface for timeRemaining state
 interface TimeRemaining {
