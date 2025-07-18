@@ -28,7 +28,6 @@ const ExamPortal: React.FC = () => {
   );
   const [isExamActive, setIsExamActive] = useState<boolean>(false);
   const [isExamOver, setIsExamOver] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Format date for display
   const formatDate = (date: Date): string => {
@@ -99,7 +98,7 @@ const ExamPortal: React.FC = () => {
         <header className="text-center mb-12">
           <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl p-1 inline-block shadow-lg">
             <div className="bg-white rounded-xl px-8 py-6">
-              <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-purple-600 to-indigo-700 bg-clip-text text-transparent">
+              <h1 className="text-4xl md:text-5responsiveness and accessibility: md:text-5xl font-extrabold bg-gradient-to-r from-purple-600 to-indigo-700 bg-clip-text text-transparent">
                 Topview Academy Web Design Fundamentals Exam
               </h1>
               <p className="text-gray-600 mt-3 text-lg">
