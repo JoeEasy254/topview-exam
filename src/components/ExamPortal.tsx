@@ -10,20 +10,18 @@ interface TimeRemaining {
 }
 
 const ExamPortal: React.FC = () => {
-  // Set exam date and time (YYYY, MM-1, DD, HH, MM) in Nairobi time
+  // Set exam date and time (YYYY, MM, DD, HH, MM) in Nairobi time
   const examDateTime: Date = DateTime.fromObject(
-    { year: 2025, month: 7, day: 18, hour: 2, minute: 15 },
+    { year: 2025, month: 7, day: 18, hour: 14, minute: 15 },
     { zone: "Africa/Nairobi" }
   ).toJSDate();
   const examLink: string = "https://forms.gle/iDWNrp94pvMUFNu77";
   const examDuration: string = "60 minutes";
   const examDurationMs: number = 60 * 60 * 1000; // 60 minutes in milliseconds
 
+  // Initialize currentTime with the actual system time
   const [currentTime, setCurrentTime] = useState<Date>(
-    DateTime.fromObject(
-      { year: 2025, month: 7, day: 18, hour: 13, minute: 14 },
-      { zone: "Africa/Nairobi" }
-    ).toJSDate() // Set to 01:14 PM EAT, July 18, 2025
+    DateTime.local().setZone("Africa/Nairobi").toJSDate()
   );
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(
     null
@@ -32,48 +30,28 @@ const ExamPortal: React.FC = () => {
   const [isExamOver, setIsExamOver] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch Nairobi time with retry mechanism
-  const fetchNairobiTime = async (retries = 3, delay = 1000): Promise<Date> => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const response = await fetch(
-          "http://worldtimeapi.org/api/timezone/Africa/Nairobi"
-        );
-        if (!response.ok) throw new Error("Failed to fetch Nairobi time");
-        const data = await response.json();
-        return DateTime.fromISO(data.datetime, {
-          zone: "Africa/Nairobi",
-        }).toJSDate();
-      } catch (err) {
-        if (i < retries - 1) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          continue;
-        }
-        setError(
-          "Could not fetch Nairobi time. Using last known time or system time."
-        );
-        return currentTime || new Date(); // Fallback to last known time or system time
-      }
-    }
-    return currentTime || new Date();
+  // Format date for display
+  const formatDate = (date: Date): string => {
+    return DateTime.fromJSDate(date).setZone("Africa/Nairobi").toLocaleString({
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (date: Date): string => {
+    return DateTime.fromJSDate(date)
+      .setZone("Africa/Nairobi")
+      .toLocaleString({ hour: "2-digit", minute: "2-digit", hour12: true });
   };
 
   // Calculate time remaining until exam or during exam
   useEffect(() => {
-    // Initial time is already set to provided Nairobi time
-    let lastFetchedTime = currentTime;
-
-    const timer = setInterval(async () => {
-      // Update time locally to reduce API calls
-      const now = new Date(lastFetchedTime.getTime() + 1000);
+    const timer = setInterval(() => {
+      // Use the actual system time, converted to Nairobi timezone
+      const now = DateTime.local().setZone("Africa/Nairobi").toJSDate();
       setCurrentTime(now);
-      lastFetchedTime = now;
-
-      // Periodically fetch real Nairobi time (e.g., every 30 seconds)
-      if (Math.floor(now.getTime() / 1000) % 30 === 0) {
-        lastFetchedTime = await fetchNairobiTime();
-        setCurrentTime(lastFetchedTime);
-      }
 
       // Calculate time difference
       const diff: number = examDateTime.getTime() - now.getTime();
@@ -84,8 +62,6 @@ const ExamPortal: React.FC = () => {
         if (timeSinceStart > examDurationMs) {
           setIsExamOver(true);
           setIsExamActive(false);
-          clearInterval(timer);
-          return;
         } else {
           setIsExamActive(true);
           setIsExamOver(false);
@@ -114,25 +90,7 @@ const ExamPortal: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [examDateTime, examDurationMs, currentTime]);
-
-  console.log("current time", currentTime);
-  // Format date for display
-  const formatDate = (date: Date): string => {
-    return DateTime.fromJSDate(date).setZone("Africa/Nairobi").toLocaleString({
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (date: Date | null): string => {
-    if (!date) return "Loading...";
-    return DateTime.fromJSDate(date)
-      .setZone("Africa/Nairobi")
-      .toLocaleString({ hour: "2-digit", minute: "2-digit", hour12: true });
-  };
+  }, [examDateTime, examDurationMs]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 py-12 px-4 sm:px-6">
@@ -179,19 +137,10 @@ const ExamPortal: React.FC = () => {
               </div>
 
               <div className="space-y-6">
-                {error && (
-                  <div className="bg-red-50 rounded-xl p-4 border-l-4 border-red-500">
-                    <p className="text-red-700">
-                      {error} Please ensure your internet connection is stable
-                      or contact support.
-                    </p>
-                  </div>
-                )}
                 <div className="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
                   <h3 className="font-bold text-lg text-gray-800 mb-2">
                     Important Details
                   </h3>
-                  a
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Exam Date:</p>
@@ -213,7 +162,7 @@ const ExamPortal: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">
-                        Current Time (Baringo):
+                        Current Time (Nairobi):
                       </p>
                       <p className="font-bold text-purple-700">
                         {formatTime(currentTime)}
@@ -252,7 +201,6 @@ const ExamPortal: React.FC = () => {
                     You've learned all that is required to take this exam. Take
                     a deep breath and do your best!
                   </p>
-                  -MR. Joseph{" "}
                 </div>
               </div>
             </div>
@@ -270,7 +218,7 @@ const ExamPortal: React.FC = () => {
                   ) : isExamActive ? (
                     <div className="bg-green-400 bg-opacity-30 rounded-xl p-4 mb-6">
                       <h3 className="font-bold text-xl mb-2">Exam Active</h3>
-                      <p className="opacity-90">You can now start the exam.</p>
+                      <p className="opacity-90">You can start the exam now.</p>
                     </div>
                   ) : (
                     <div className="bg-yellow-400 bg-opacity-30 rounded-xl p-4 mb-6">
@@ -281,7 +229,7 @@ const ExamPortal: React.FC = () => {
                     </div>
                   )}
                   <div className="text-center">
-                    <h3 className="font-bold mb-3">Time Until Exam:</h3>
+                    <h3 className="font-bold mb-3">Time Status:</h3>
                     {isExamOver ? (
                       <div className="text-xl font-bold bg-red-500 bg-opacity-20 py-4 rounded-xl">
                         Exam Completed
@@ -330,53 +278,18 @@ const ExamPortal: React.FC = () => {
                 </div>
 
                 <div className="flex-grow flex items-center justify-center">
-                  {isExamOver ? (
-                    <div className="bg-gray-400 text-white rounded-xl py-4 px-6 text-center font-bold text-xl w-full max-w-xs mx-auto">
-                      Exam Completed
-                    </div>
-                  ) : isExamActive ? (
-                    <a
-                      href={examLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full max-w-xs mx-auto"
-                    >
-                      <div className="bg-white text-indigo-600 rounded-xl py-4 px-6 text-center font-bold text-xl transform transition-all hover:scale-105 hover:shadow-lg active:scale-95">
-                        Start Exam Now
-                        <div className="mt-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-8 w-8 mx-auto text-purple-500 animate-pulse"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                    </a>
-                  ) : (
-                    <button
-                      className="bg-gray-300 text-gray-500 rounded-xl py-4 px-6 text-center font-bold text-xl w-full max-w-xs mx-auto cursor-not-allowed"
-                      disabled
-                    >
-                      Exam Not Started
+                  <a
+                    href={examLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full max-w-xs mx-auto"
+                  >
+                    <div className="bg-white text-indigo-600 rounded-xl py-4 px-6 text-center font-bold text-xl transform transition-all hover:scale-105 hover:shadow-lg active:scale-95">
+                      Start Exam Now
                       <div className="mt-2">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-8 w-8 mx-auto text-gray-400"
+                          className="h-8 w-8 mx-auto text-purple-500 animate-pulse"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -385,12 +298,18 @@ const ExamPortal: React.FC = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
                       </div>
-                    </button>
-                  )}
+                    </div>
+                  </a>
                 </div>
               </div>
             </div>
